@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Job Application Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Job Application Assistant</h1>
+        <p class="subtitle">
+            Paste a job listing, add your profile notes, and get help tailoring your application.
+        </p>
+
+        <div class="controls">
+            <label for="mode-select"><b>Mode:</b></label>
+            <select id="mode-select">
+                <option value="job_ad">Job Ad Analyzer</option>
+                <option value="cv_helper">CV / Cover Letter Helper</option>
+            </select>
+
+            <button id="clear-button" type="button" onclick="clearChat()">Clear Chat</button>
+        </div>
+
+        <div class="main-layout">
+            <div class="input-section">
+                <label for="job-description"><b>Job Listing</b></label>
+                <textarea
+                    id="job-description"
+                    rows="10"
+                    placeholder="Paste the full job description here..."
+                ></textarea>
+
+                <label for="profile-notes"><b>Your Profile / CV Notes</b></label>
+                <textarea
+                    id="profile-notes"
+                    rows="8"
+                    placeholder="Paste relevant experience, skills, or CV notes here..."
+                ></textarea>
+
+                <label for="extra-instruction"><b>Extra Instruction (optional)</b></label>
+                <textarea
+                    id="extra-instruction"
+                    rows="4"
+                    placeholder="Example: Focus on Python and banking experience."
+                ></textarea>
+
+                <button id="send-button" type="button" onclick="sendMessage()">Analyze</button>
+            </div>
+
+            <div class="response-section">
+                <div class="response-header">
+                    <h2>Assistant Response</h2>
+                </div>
+
+                <div id="chat-box" class="chat-box">
+                    <p class="system-message">
+                        <b>System:</b> Ready to help with your job applications.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const sendButton = document.getElementById("send-button");
+        const clearButton = document.getElementById("clear-button");
+        const modeSelect = document.getElementById("mode-select");
+        const chatBox = document.getElementById("chat-box");
+        const inputSection = document.querySelector(".input-section");
+        const jobDescriptionInput = document.getElementById("job-description");
+        const profileNotesInput = document.getElementById("profile-notes");
+        const extraInstructionInput = document.getElementById("extra-instruction");
+
+        function getSystemPrompt(mode) {
+            if (mode === "cv_helper") {
+                return "You help tailor CV bullets and cover letters to job descriptions. Be practical, concise, and professional. Emphasize alignment between the candidate profile and the role. When useful, suggest improved bullet points and short application wording.";
+            }
+
+            return "You analyze job descriptions and extract key skills, responsibilities, likely priorities, and what the candidate should emphasize in their application. Be structured, concise, and practical.";
+        }
+
+        let conversationHistory = [
+            {
+                role: "system",
+                content: getSystemPrompt(modeSelect.value)
+            }
+        ];
+
+        function scrollChatToBottom() {
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function addMessage(roleLabel, text, className) {
+            const paragraph = document.createElement("p");
+            paragraph.className = className;
+
+            const label = document.createElement("b");
+            label.textContent = roleLabel + ": ";
+
+            paragraph.appendChild(label);
+            paragraph.appendChild(document.createTextNode(text));
+            chatBox.appendChild(paragraph);
+
+            scrollChatToBottom();
+            return paragraph;
+        }
+
+        function buildUserPrompt() {
+            const mode = modeSelect.value;
+            const jobDescription = jobDescriptionInput.value.trim();
+            const profileNotes = profileNotesInput.value.trim();
+            const extraInstruction = extraInstructionInput.value.trim();
+
+            if (!jobDescription) {
+                return "";
+            }
+
+            let prompt = "";
+
+            if (mode === "job_ad") {
+                prompt += "Please analyze the following job listing.\n\n";
+                prompt += "Return:\n";
+                prompt += "1. Key required skills\n";
+                prompt += "2. Main responsibilities\n";
+                prompt += "3. What a candidate should emphasize\n";
+                prompt += "4. Possible gaps or challenges\n\n";
+            } else {
+                prompt += "Please help tailor an application to the following job listing.\n\n";
+                prompt += "Return:\n";
+                prompt += "1. The most relevant candidate strengths\n";
+                prompt += "2. Suggested CV bullet points\n";
+                prompt += "3. A short cover letter angle or intro paragraph\n\n";
+            }
+
+            prompt += "JOB LISTING:\n";
+            prompt += jobDescription + "\n\n";
+
+            if (profileNotes) {
+                prompt += "CANDIDATE PROFILE / CV NOTES:\n";
+                prompt += profileNotes + "\n\n";
+            }
+
+            if (extraInstruction) {
+                prompt += "EXTRA INSTRUCTION:\n";
+                prompt += extraInstruction + "\n\n";
+            }
+
+            return prompt;
+        }
+
+        function clearChat() {
+            chatBox.innerHTML = "";
+            addMessage("System", "Ready to help with your job applications.", "system-message");
+
+            conversationHistory = [
+                {
+                    role: "system",
+                    content: getSystemPrompt(modeSelect.value)
+                }
+            ];
+
+            jobDescriptionInput.value = "";
+            profileNotesInput.value = "";
+            extraInstructionInput.value = "";
+        }
+
+        modeSelect.addEventListener("change", function() {
+            clearChat();
+        });
+
+
+        function appendFormattedText(container, text) {
+        const lines = text.split("\n");
+
+        lines.forEach(function(line) {
+            if (line.trim() === "") {
+                const spacer = document.createElement("div");
+                spacer.style.height = "8px";
+                container.appendChild(spacer);
+                return;
+            }
+
+            const lineElement = document.createElement("div");
+            lineElement.textContent = line;
+            lineElement.className = "assistant-line";
+            container.appendChild(lineElement);
+        });
+        }
+
+        async function sendMessage() {
+            const userPrompt = buildUserPrompt();
+
+            if (!userPrompt) {
+                return;
+            }
+
+            conversationHistory.push({
+                role: "user",
+                content: userPrompt
+            });
+
+            addMessage("You", "Submitted application materials for analysis.", "user-message");
+
+            jobDescriptionInput.disabled = true;
+            profileNotesInput.disabled = true;
+            extraInstructionInput.disabled = true;
+            sendButton.disabled = true;
+            clearButton.disabled = true;
+            modeSelect.disabled = true;
+            sendButton.textContent = "Analyzing...";
+
+            const loadingParagraph = addMessage("Assistant", "Thinking...", "ai-message");
+            //inputSection.style.display = "none";
+            try {
+                const response = await fetch("/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ messages: conversationHistory })
+                });
+
+                const data = await response.json();
+
+                conversationHistory.push({
+                    role: "assistant",
+                    content: data.reply
+                });
+
+                loadingParagraph.innerHTML = "";
+
+                const aiLabel = document.createElement("b");
+                aiLabel.textContent = "Assistant: ";
+
+                loadingParagraph.appendChild(aiLabel);
+                appendFormattedText(loadingParagraph, data.reply);
+
+                
+            } catch (error) {
+                loadingParagraph.innerHTML = "";
+
+                const errorLabel = document.createElement("b");
+                errorLabel.textContent = "Error: ";
+
+                loadingParagraph.appendChild(errorLabel);
+                loadingParagraph.appendChild(
+                    document.createTextNode("Could not reach the server.")
+                );
+            } finally {
+                jobDescriptionInput.disabled = false;
+                profileNotesInput.disabled = false;
+                extraInstructionInput.disabled = false;
+                sendButton.disabled = false;
+                clearButton.disabled = false;
+                modeSelect.disabled = false;
+                sendButton.textContent = "Analyze";
+                //inputSection.style.display = "block";
+                jobDescriptionInput.focus();
+                scrollChatToBottom();
+            }
+        }
+
+        [jobDescriptionInput, profileNotesInput, extraInstructionInput].forEach(function(input) {
+            input.addEventListener("keydown", function(event) {
+                if (event.key === "Enter" && !event.shiftKey && (event.ctrlKey || event.metaKey)) {
+                    event.preventDefault();
+                    sendMessage();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

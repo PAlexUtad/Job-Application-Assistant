@@ -1,6 +1,7 @@
 # Job Application Assistant
 
 A small AI-assisted web application for analyzing job listings and helping tailor application materials.
+<img width="1285" height="850" alt="image" src="https://github.com/user-attachments/assets/a66e3a4e-91b1-4c1a-b992-32f86777c0b0" />
 
 ## What it does
 
